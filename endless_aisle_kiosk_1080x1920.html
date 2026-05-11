@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1080, initial-scale=1.0"/>
+<title>Fynd Store OS – Endless Aisle</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --gold:#C9941A;--gold-l:#E8B84B;--gold-g:rgba(201,148,26,0.15);
+  --bg:#080808;--card:#111111;--surf:#181818;
+  --txt:#F5F0E8;--muted:#666;--dim:#2A2A2A;
+  --red:#C62828;--green:#2E7D32;
+  --serif:'Cormorant Garamond',serif;
+  --sans:'Outfit',sans-serif;
+}
+html,body{width:1080px;height:1920px;overflow:hidden;background:var(--bg);color:var(--txt);font-family:var(--sans);}
+
+/* ── screens ────────────────────────── */
+.screen{position:absolute;inset:0;display:none;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* ── ghost finger ───────────────────── */
+#finger{
+  position:fixed;width:80px;height:80px;border-radius:50%;
+  background:rgba(201,148,26,0.18);border:2.5px solid var(--gold);
+  display:flex;align-items:center;justify-content:center;
+  font-size:40px;z-index:9999;pointer-events:none;
+  transition:left .55s cubic-bezier(.4,0,.2,1),top .55s cubic-bezier(.4,0,.2,1),transform .15s;
+  left:-120px;top:-120px;transform:scale(1);
+}
+#finger.tapping{transform:scale(0.7);}
+
+/* ── ripple ─────────────────────────── */
+.ripple{
+  position:fixed;width:120px;height:120px;border-radius:50%;
+  border:3px solid var(--gold);pointer-events:none;z-index:9998;
+  animation:rippleOut .8s ease-out forwards;
+  transform:translate(-50%,-50%);
+}
+@keyframes rippleOut{0%{transform:translate(-50%,-50%) scale(.2);opacity:1}100%{transform:translate(-50%,-50%) scale(2.4);opacity:0}}
+
+/* ── keyframes ──────────────────────── */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pop{0%{transform:scale(0)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+@keyframes glow{0%,100%{box-shadow:0 0 30px rgba(201,148,26,.3)}50%{box-shadow:0 0 70px rgba(201,148,26,.7)}}
+@keyframes bannerFade{0%{opacity:0}10%{opacity:1}88%{opacity:1}100%{opacity:0}}
+
+/* ── screen label badge ─────────────── */
+#screen-label{
+  position:fixed;top:24px;right:28px;background:rgba(0,0,0,.75);
+  backdrop-filter:blur(12px);border:1px solid var(--dim);
+  border-radius:14px;padding:8px 22px;z-index:9990;
+  font-size:22px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);
+}
+
+/* ── progress bar ───────────────────── */
+#progress{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);display:flex;gap:12px;align-items:flex-end;z-index:9990;}
+.pdot{height:10px;border-radius:5px;background:var(--dim);transition:all .4s;}
+.pdot.on{background:var(--gold);width:36px!important;}
+
+/* ─────────────── ATTRACT ─────────────── */
+#attract{background:var(--bg);align-items:center;justify-content:space-between;padding:80px 60px 70px;}
+.att-glow{position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(201,148,26,.12) 0%,transparent 70%);pointer-events:none;}
+.att-logo{display:flex;align-items:center;gap:18px;z-index:1;}
+.logo-box{width:72px;height:72px;border-radius:16px;background:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--bg);font-size:34px;}
+.logo-name{font-size:36px;font-weight:600;letter-spacing:1px;}
+.att-banner{text-align:center;z-index:1;}
+.att-banner .headline{font-family:var(--serif);font-size:128px;font-weight:700;color:var(--gold);line-height:1.0;letter-spacing:-2px;white-space:pre-line;margin-bottom:36px;}
+.att-banner .sub{font-size:34px;color:var(--muted);line-height:1.7;}
+.banner-dots{display:flex;gap:14px;justify-content:center;margin-top:40px;}
+.bdot{height:12px;border-radius:6px;background:var(--dim);transition:all .4s;}
+.bdot.on{background:var(--gold);width:52px!important;} .bdot{width:12px;}
+.att-tap{display:flex;flex-direction:column;align-items:center;gap:18px;z-index:1;}
+.tap-ring{width:120px;height:120px;border-radius:50%;border:3px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:56px;animation:pulse 1.8s ease-in-out infinite;}
+.tap-label{font-size:26px;letter-spacing:5px;text-transform:uppercase;color:var(--gold);}
+
+/* ─────────────── CATALOGUE ─────────────── */
+#catalogue{background:var(--bg);}
+.cat-header{padding:50px 56px 28px;border-bottom:1px solid #1A1A1A;flex-shrink:0;}
+.cat-toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;}
+.cat-title-sm{font-size:22px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);}
+.cat-title{font-family:var(--serif);font-size:64px;font-weight:700;margin-top:6px;}
+.cat-logo-sm{width:62px;height:62px;border-radius:13px;background:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--bg);font-size:28px;}
+.search-bar{background:var(--surf);border-radius:20px;padding:18px 28px;display:flex;align-items:center;gap:16px;border:1px solid #222;margin-bottom:22px;}
+.search-icon{font-size:28px;}
+.search-ph{font-size:28px;color:#333;}
+.cat-filters{display:flex;gap:14px;padding-bottom:6px;}
+.fchip{background:var(--surf);color:var(--muted);border-radius:40px;padding:10px 28px;font-size:24px;font-weight:400;}
+.fchip.on{background:var(--gold);color:var(--bg);font-weight:700;}
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:24px 48px 48px;overflow:hidden;flex:1;}
+.prod-card{background:var(--card);border-radius:24px;overflow:hidden;border:1.5px solid #1A1A1A;transition:border-color .2s;}
+.prod-card.hl{border-color:var(--gold);box-shadow:0 0 30px rgba(201,148,26,.3);}
+.prod-img{height:240px;background:var(--surf);display:flex;align-items:center;justify-content:center;font-size:100px;position:relative;}
+.prod-tag{position:absolute;top:14px;right:14px;background:var(--gold);color:var(--bg);font-size:18px;font-weight:700;padding:5px 13px;border-radius:10px;letter-spacing:.5px;}
+.prod-info{padding:22px 24px;}
+.prod-brand{font-size:18px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+.prod-name{font-size:26px;font-weight:600;margin-top:5px;line-height:1.3;}
+.prod-price{font-size:30px;font-weight:700;color:var(--gold);margin-top:10px;}
+
+/* ─────────────── PDP ─────────────── */
+#pdp{background:var(--bg);}
+.pdp-hero{height:820px;background:var(--surf);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;flex-shrink:0;}
+.pdp-back{position:absolute;top:36px;left:40px;background:#1A1A1A;border-radius:16px;padding:14px 26px;font-size:26px;cursor:pointer;}
+.pdp-img{font-size:220px;line-height:1;}
+.pdp-color{font-size:22px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-top:12px;}
+.pdp-info{flex:1;padding:40px 56px;overflow:hidden;}
+.pdp-brand-sm{font-size:22px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);}
+.pdp-name{font-family:var(--serif);font-size:80px;font-weight:700;line-height:1.0;margin-top:8px;}
+.pdp-price-row{display:flex;align-items:center;gap:22px;margin-top:18px;}
+.pdp-price{font-size:58px;font-weight:700;color:var(--gold);}
+.pdp-tax{font-size:22px;color:var(--muted);}
+.pdp-rating{font-size:24px;color:#555;margin-top:8px;}
+.sizes-label{font-size:22px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:36px;margin-bottom:18px;}
+.sizes-row{display:flex;gap:16px;flex-wrap:wrap;}
+.sz{width:100px;height:100px;border-radius:18px;border:1.5px solid #2E2E2E;background:var(--surf);color:var(--txt);font-size:28px;font-weight:600;display:flex;align-items:center;justify-content:center;position:relative;transition:all .25s;}
+.sz.oos{border-color:#1E1E1E;background:#0D0D0D;color:#272727;}
+.sz.oos::after{content:'';position:absolute;top:50%;left:50%;width:70%;height:2px;background:#1E1E1E;transform:translate(-50%,-50%) rotate(-45deg);}
+.sz.hl{border:2.5px solid var(--gold);background:rgba(201,148,26,.12);color:var(--gold);box-shadow:0 0 20px rgba(201,148,26,.5);}
+.oos-alert{margin-top:28px;background:#180000;border:1.5px solid rgba(198,40,40,.4);border-radius:20px;padding:24px 28px;animation:slideUp .4s ease;}
+.oos-alert-title{font-size:28px;font-weight:600;color:var(--red);}
+.oos-alert-sub{font-size:22px;color:var(--muted);margin-top:6px;}
+.pdp-cta{margin-top:28px;border-radius:22px;padding:36px;font-size:32px;font-weight:700;text-align:center;transition:all .4s;letter-spacing:.5px;}
+.pdp-cta.ready{background:var(--gold);color:var(--bg);box-shadow:0 0 50px rgba(201,148,26,.6);}
+.pdp-cta.wait{background:var(--surf);color:#333;}
+
+/* ─────────────── ENDLESS AISLE ─────────────── */
+#endless{background:var(--bg);padding:56px 56px 50px;}
+.ea-badge{display:inline-flex;align-items:center;gap:14px;background:rgba(201,148,26,.12);border:1.5px solid rgba(201,148,26,.3);border-radius:40px;padding:10px 26px;margin-bottom:30px;}
+.ea-badge-icon{font-size:26px;}
+.ea-badge-text{font-size:20px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);}
+.ea-title{font-family:var(--serif);font-size:90px;font-weight:700;line-height:1.0;margin-bottom:12px;}
+.ea-sub{font-size:28px;color:var(--muted);margin-bottom:40px;line-height:1.6;}
+.ea-cards{display:flex;flex-direction:column;gap:24px;flex:1;}
+.ea-card{background:var(--card);border:1.5px solid #1E1E1E;border-radius:24px;padding:34px 36px;position:relative;transition:all .25s;}
+.ea-card.hl{background:rgba(201,148,26,.08);border-color:var(--gold);box-shadow:0 0 30px rgba(201,148,26,.3);}
+.ea-badge-pill{position:absolute;top:22px;right:26px;background:var(--surf);color:var(--muted);font-size:18px;font-weight:700;padding:6px 16px;border-radius:12px;letter-spacing:.5px;transition:all .2s;}
+.ea-card.hl .ea-badge-pill{background:var(--gold);color:var(--bg);}
+.ea-icon{font-size:50px;margin-bottom:14px;}
+.ea-name{font-size:32px;font-weight:600;}
+.ea-units{font-size:22px;color:var(--muted);margin-top:5px;}
+.ea-eta{font-size:26px;font-weight:600;color:var(--gold);margin-top:10px;}
+.ea-check{position:absolute;right:36px;bottom:34px;width:44px;height:44px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;color:var(--bg);font-size:22px;font-weight:900;}
+.ea-cta{margin-top:30px;border-radius:22px;padding:36px;font-size:32px;font-weight:700;text-align:center;transition:all .4s;}
+.ea-cta.on{background:var(--gold);color:var(--bg);box-shadow:0 0 50px rgba(201,148,26,.6);}
+.ea-cta.off{background:var(--surf);color:#333;}
+
+/* ─────────────── ORDER ─────────────── */
+#order-screen{background:var(--bg);padding:56px;}
+.ord-sm{font-size:22px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.ord-title{font-family:var(--serif);font-size:80px;font-weight:700;margin-bottom:40px;}
+.ord-card{background:var(--card);border-radius:24px;padding:36px;display:flex;gap:30px;align-items:center;border:1px solid #1A1A1A;margin-bottom:24px;}
+.ord-thumb{width:140px;height:140px;background:var(--surf);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:72px;flex-shrink:0;}
+.ord-prod-brand{font-size:18px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+.ord-prod-name{font-size:30px;font-weight:600;margin-top:5px;line-height:1.3;}
+.ord-prod-meta{font-size:24px;color:var(--muted);margin-top:5px;}
+.ord-prod-price{font-size:36px;font-weight:700;color:var(--gold);margin-top:10px;}
+.ord-info-card{background:var(--card);border-radius:24px;padding:32px 36px;border:1px solid #1A1A1A;margin-bottom:24px;}
+.ord-info-label{font-size:19px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:16px;}
+.ord-info-row{display:flex;gap:20px;align-items:flex-start;}
+.ord-info-icon{font-size:40px;}
+.ord-info-name{font-size:28px;font-weight:600;}
+.ord-info-eta{font-size:24px;color:var(--gold);margin-top:5px;}
+.ord-addr{font-size:26px;line-height:1.8;}
+.ord-addr span{color:var(--muted);}
+.ord-total-row{display:flex;justify-content:space-between;padding:0 8px;margin-bottom:30px;}
+.ord-total-label{font-size:28px;color:var(--muted);}
+.ord-total-val{font-size:40px;font-weight:700;}
+.confirm-btn{background:var(--gold);color:var(--bg);border-radius:22px;padding:40px;font-size:36px;font-weight:800;text-align:center;letter-spacing:.5px;transition:box-shadow .3s;}
+.confirm-btn.glow{box-shadow:0 0 80px rgba(201,148,26,.8);}
+
+/* ─────────────── CONFIRM ─────────────── */
+#confirm-screen{background:var(--bg);align-items:center;justify-content:center;padding:60px;}
+.conf-ring{width:200px;height:200px;border-radius:50%;background:rgba(201,148,26,.1);border:3px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:96px;margin-bottom:50px;transform:scale(0);transition:transform .6s cubic-bezier(.34,1.56,.64,1);}
+.conf-ring.show{transform:scale(1);}
+.conf-sm{font-size:20px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
+.conf-title{font-family:var(--serif);font-size:100px;font-weight:700;line-height:1.0;margin-bottom:26px;text-align:center;}
+.conf-detail{font-size:28px;color:var(--muted);text-align:center;line-height:2;margin-bottom:50px;}
+.conf-detail span{color:var(--gold);font-weight:600;}
+.conf-id-box{background:var(--card);border-radius:22px;padding:28px 40px;border:1px solid #1A1A1A;margin-bottom:22px;width:100%;text-align:center;}
+.conf-id-label{font-size:20px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.conf-id{font-size:32px;font-weight:700;letter-spacing:2px;}
+.conf-notif{background:rgba(201,148,26,.08);border-radius:22px;padding:28px 36px;border:1px solid rgba(201,148,26,.2);width:100%;display:flex;gap:20px;align-items:center;margin-bottom:50px;}
+.conf-notif-icon{font-size:40px;}
+.conf-notif-title{font-size:24px;font-weight:700;color:var(--gold);}
+.conf-notif-sub{font-size:22px;color:var(--muted);margin-top:4px;}
+.conf-brand{display:flex;align-items:center;gap:16px;}
+.conf-logo{width:56px;height:56px;border-radius:12px;background:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--bg);font-size:26px;}
+.conf-brand-name{font-size:30px;font-weight:600;}
+.conf-tag{font-size:18px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-top:6px;text-align:center;}
+</style>
+</head>
+<body>
+
+<!-- ── Screen label ───────────────── -->
+<div id="screen-label">Attract</div>
+
+<!-- ── Ghost Finger ──────────────── -->
+<div id="finger">👆</div>
+
+<!-- ── Progress dots ─────────────── -->
+<div id="progress">
+  <div class="pdot on" style="width:36px" data-s="attract"></div>
+  <div class="pdot" style="width:10px" data-s="catalogue"></div>
+  <div class="pdot" style="width:10px" data-s="pdp"></div>
+  <div class="pdot" style="width:10px" data-s="endless"></div>
+  <div class="pdot" style="width:10px" data-s="order"></div>
+  <div class="pdot" style="width:10px" data-s="confirm"></div>
+</div>
+
+<!-- ══════════════════════════════════
+     SCREEN: ATTRACT
+════════════════════════════════════ -->
+<div id="attract" class="screen active">
+  <div class="att-glow"></div>
+  <div class="att-logo">
+    <div class="logo-box">F</div>
+    <span class="logo-name">Fynd Store OS</span>
+  </div>
+  <div class="att-banner">
+    <div class="headline" id="att-headline">Walk In.
+Walk Out
+With More.</div>
+    <div class="sub" id="att-sub">Browse our full catalogue — every SKU, every size.</div>
+    <div class="banner-dots">
+      <div class="bdot on" id="bd0"></div>
+      <div class="bdot" id="bd1"></div>
+      <div class="bdot" id="bd2"></div>
+    </div>
+  </div>
+  <div class="att-tap" id="tap-cta">
+    <div class="tap-ring">👆</div>
+    <div class="tap-label">Tap to Explore</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     SCREEN: CATALOGUE
+════════════════════════════════════ -->
+<div id="catalogue" class="screen">
+  <div class="cat-header">
+    <div class="cat-toprow">
+      <div>
+        <div class="cat-title-sm">Explore</div>
+        <div class="cat-title">Our Catalogue</div>
+      </div>
+      <div class="cat-logo-sm">F</div>
+    </div>
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <span class="search-ph">Search products, brands…</span>
+    </div>
+    <div class="cat-filters">
+      <div class="fchip on">All</div>
+      <div class="fchip">Footwear</div>
+      <div class="fchip">Apparel</div>
+      <div class="fchip">Sports</div>
+      <div class="fchip">Accessories</div>
+    </div>
+  </div>
+  <div class="cat-grid">
+    <div class="prod-card hl" id="pc0">
+      <div class="prod-img">👟<div class="prod-tag">Bestseller</div></div>
+      <div class="prod-info">
+        <div class="prod-brand">Nike</div>
+        <div class="prod-name">Air Max 270</div>
+        <div class="prod-price">₹12,999</div>
+      </div>
+    </div>
+    <div class="prod-card" id="pc1">
+      <div class="prod-img">👟<div class="prod-tag">New</div></div>
+      <div class="prod-info">
+        <div class="prod-brand">Adidas</div>
+        <div class="prod-name">Ultraboost 22</div>
+        <div class="prod-price">₹14,499</div>
+      </div>
+    </div>
+    <div class="prod-card" id="pc2">
+      <div class="prod-img">👟<div class="prod-tag">Sale</div></div>
+      <div class="prod-info">
+        <div class="prod-brand">Puma</div>
+        <div class="prod-name">RS-X3</div>
+        <div class="prod-price">₹8,999</div>
+      </div>
+    </div>
+    <div class="prod-card" id="pc3">
+      <div class="prod-img">👟</div>
+      <div class="prod-info">
+        <div class="prod-brand">Reebok</div>
+        <div class="prod-name">Classic Leather</div>
+        <div class="prod-price">₹7,499</div>
+      </div>
+    </div>
+    <div class="prod-card" id="pc4">
+      <div class="prod-img">👟<div class="prod-tag">Premium</div></div>
+      <div class="prod-info">
+        <div class="prod-brand">New Balance</div>
+        <div class="prod-name">990v5</div>
+        <div class="prod-price">₹16,999</div>
+      </div>
+    </div>
+    <div class="prod-card" id="pc5">
+      <div class="prod-img">👟</div>
+      <div class="prod-info">
+        <div class="prod-brand">Converse</div>
+        <div class="prod-name">Chuck 70</div>
+        <div class="prod-price">₹5,999</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     SCREEN: PDP
+════════════════════════════════════ -->
+<div id="pdp" class="screen">
+  <div class="pdp-hero">
+    <div class="pdp-back">← Back</div>
+    <div class="pdp-img">👟</div>
+    <div class="pdp-color">Midnight Black</div>
+  </div>
+  <div class="pdp-info">
+    <div class="pdp-brand-sm">Nike</div>
+    <div class="pdp-name">Air Max 270</div>
+    <div class="pdp-price-row">
+      <div class="pdp-price">₹12,999</div>
+      <div class="pdp-tax">Incl. all taxes</div>
+    </div>
+    <div class="pdp-rating">⭐ 4.6 &nbsp;·&nbsp; 2,341 reviews</div>
+    <div class="sizes-label">Select Size (UK)</div>
+    <div class="sizes-row">
+      <div class="sz" id="sz6">6</div>
+      <div class="sz" id="sz7">7</div>
+      <div class="sz" id="sz8">8</div>
+      <div class="sz oos hl" id="sz9">9</div>
+      <div class="sz" id="sz10">10</div>
+      <div class="sz" id="sz11">11</div>
+    </div>
+    <div class="oos-alert" id="oos-alert" style="display:none">
+      <div class="oos-alert-title">⚠ Out of Stock at This Store</div>
+      <div class="oos-alert-sub">Don't worry — we'll find it for you across our network.</div>
+    </div>
+    <div class="pdp-cta wait" id="pdp-cta">Select a size to continue</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     SCREEN: ENDLESS AISLE
+════════════════════════════════════ -->
+<div id="endless" class="screen">
+  <div style="padding:56px 56px 0;flex-shrink:0;">
+    <div class="ea-badge"><span class="ea-badge-icon">✨</span><span class="ea-badge-text">Endless Aisle</span></div>
+    <div class="ea-title">We found it.</div>
+    <div class="ea-sub">Nike Air Max 270 · Size 9 available at 3 locations</div>
+  </div>
+  <div class="ea-cards" style="padding:0 56px;">
+    <div class="ea-card hl" id="ea0">
+      <div class="ea-badge-pill">Fastest</div>
+      <div class="ea-icon">📦</div>
+      <div class="ea-name">Warehouse – Andheri</div>
+      <div class="ea-units">14 units available</div>
+      <div class="ea-eta">Delivered in 2 days</div>
+      <div class="ea-check">✓</div>
+    </div>
+    <div class="ea-card" id="ea1">
+      <div class="ea-badge-pill">Nearby</div>
+      <div class="ea-icon">🏪</div>
+      <div class="ea-name">Kurla Store</div>
+      <div class="ea-units">3 units available</div>
+      <div class="ea-eta">Same-day pickup</div>
+    </div>
+    <div class="ea-card" id="ea2">
+      <div class="ea-badge-pill">Pan-India</div>
+      <div class="ea-icon">🚚</div>
+      <div class="ea-name">Ship to Home</div>
+      <div class="ea-eta">3–5 business days</div>
+    </div>
+  </div>
+  <div style="padding:24px 56px 50px;flex-shrink:0;">
+    <div class="ea-cta on" id="ea-cta">Proceed to Order →</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     SCREEN: ORDER SUMMARY
+════════════════════════════════════ -->
+<div id="order-screen" class="screen">
+  <div class="ord-sm">Order Summary</div>
+  <div class="ord-title">Confirm Your Order</div>
+  <div class="ord-card">
+    <div class="ord-thumb">👟</div>
+    <div>
+      <div class="ord-prod-brand">Nike</div>
+      <div class="ord-prod-name">Air Max 270</div>
+      <div class="ord-prod-meta">Size UK 9 · Midnight Black</div>
+      <div class="ord-prod-price">₹12,999</div>
+    </div>
+  </div>
+  <div class="ord-info-card">
+    <div class="ord-info-label">Fulfilment</div>
+    <div class="ord-info-row">
+      <div class="ord-info-icon">📦</div>
+      <div>
+        <div class="ord-info-name">Warehouse – Andheri</div>
+        <div class="ord-info-eta">Delivered in 2 days</div>
+      </div>
+    </div>
+  </div>
+  <div class="ord-info-card">
+    <div class="ord-info-label">Deliver To</div>
+    <div class="ord-addr">Rahul Sharma<br/><span>42, Hill View Apt, Bandra West,<br/>Mumbai — 400050</span></div>
+  </div>
+  <div class="ord-total-row">
+    <div class="ord-total-label">Total</div>
+    <div class="ord-total-val">₹12,999</div>
+  </div>
+  <div class="confirm-btn" id="confirm-btn">Confirm Order ✓</div>
+</div>
+
+<!-- ══════════════════════════════════
+     SCREEN: CONFIRMED
+════════════════════════════════════ -->
+<div id="confirm-screen" class="screen">
+  <div class="conf-ring" id="conf-ring">✓</div>
+  <div class="conf-sm">Order Placed</div>
+  <div class="conf-title">You're all set!</div>
+  <div class="conf-detail">Nike Air Max 270 · Size 9<br/><span>Delivered in 2 days</span></div>
+  <div class="conf-id-box" style="max-width:700px;">
+    <div class="conf-id-label">Order ID</div>
+    <div class="conf-id">#FYS-2026-84921</div>
+  </div>
+  <div class="conf-notif" style="max-width:700px;">
+    <div class="conf-notif-icon">💬</div>
+    <div>
+      <div class="conf-notif-title">Confirmation sent</div>
+      <div class="conf-notif-sub">WhatsApp & SMS to +91 98765 43210</div>
+    </div>
+  </div>
+  <div class="conf-brand">
+    <div class="conf-logo">F</div>
+    <div class="conf-brand-name">Fynd Store OS</div>
+  </div>
+  <div class="conf-tag">Endless Aisle</div>
+</div>
+
+<!-- ══════════════════════════════════
+     SCRIPT
+════════════════════════════════════ -->
+<script>
+const GOLD='#C9941A';
+let stepIdx=0,loopTimer=null;
+
+/* ── banner rotation ─── */
+const headlines=[
+  ["Walk In.\nWalk Out\nWith More.","Browse our full catalogue — every SKU, every size."],
+  ["Never Miss\nA Sale.","Out of stock? We'll find it across our network."],
+  ["Endless\nAisle.","One tap. Infinite inventory. Delivered to you."],
+];
+let bannerIdx=0;
+function rotateBanner(){
+  bannerIdx=(bannerIdx+1)%3;
+  document.getElementById('att-headline').textContent=headlines[bannerIdx][0];
+  document.getElementById('att-sub').textContent=headlines[bannerIdx][1];
+  [0,1,2].forEach(i=>{
+    const d=document.getElementById('bd'+i);
+    d.className='bdot'+(i===bannerIdx?' on':'');
+    d.style.width=i===bannerIdx?'52px':'12px';
+  });
+}
+let bannerTimer=setInterval(rotateBanner,2800);
+
+/* ── show/hide screen ─── */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const labels={attract:'Attract',catalogue:'Browse',pdp:'Product Detail',endless:'Endless Aisle','order-screen':'Order','confirm-screen':'Confirmed'};
+  document.getElementById('screen-label').textContent=labels[id]||id;
+  /* progress dots */
+  const screenOrder=['attract','catalogue','pdp','endless','order-screen','confirm-screen'];
+  const si=screenOrder.indexOf(id);
+  document.querySelectorAll('.pdot').forEach((d,i)=>{
+    d.classList.toggle('on',i===si);
+    d.style.width=i===si?'36px':'10px';
+  });
+}
+
+/* ── ghost finger ─── */
+const finger=document.getElementById('finger');
+function moveFinger(x,y){
+  finger.style.left=(x-40)+'px';
+  finger.style.top=(y-40)+'px';
+  finger.style.opacity='1';
+}
+function hideFinger(){finger.style.opacity='0';}
+function tapAt(x,y){
+  return new Promise(res=>{
+    moveFinger(x,y);
+    setTimeout(()=>{
+      finger.classList.add('tapping');
+      /* ripple */
+      const r=document.createElement('div');
+      r.className='ripple';r.style.left=x+'px';r.style.top=y+'px';
+      document.body.appendChild(r);
+      setTimeout(()=>r.remove(),900);
+      setTimeout(()=>{finger.classList.remove('tapping');res();},300);
+    },400);
+  });
+}
+function wait(ms){return new Promise(r=>setTimeout(r,ms));}
+
+/* ══════════════════════════════════
+   FULL SEQUENCE
+══════════════════════════════════ */
+async function runDemo(){
+  while(true){
+
+    /* ── ATTRACT ── */
+    showScreen('attract');hideFinger();
+    await wait(3200);
+    moveFinger(540,1720);
+    await wait(900);
+    await tapAt(540,1720);
+    await wait(400);
+
+    /* ── CATALOGUE ── */
+    showScreen('catalogue');hideFinger();
+    await wait(2000);
+    moveFinger(200,900);
+    await wait(900);
+    await tapAt(200,900);
+    await wait(400);
+
+    /* ── PDP – no OOS yet ── */
+    showScreen('pdp');
+    document.getElementById('oos-alert').style.display='none';
+    document.getElementById('pdp-cta').className='pdp-cta wait';
+    document.getElementById('pdp-cta').textContent='Select a size to continue';
+    document.getElementById('sz9').className='sz oos';
+    hideFinger();
+    await wait(1800);
+    /* move to size 9 */
+    moveFinger(720,1330);
+    await wait(900);
+    await tapAt(720,1330);
+    /* highlight size 9 */
+    document.getElementById('sz9').className='sz oos hl';
+    await wait(600);
+    /* show OOS */
+    document.getElementById('oos-alert').style.display='block';
+    await wait(1600);
+    /* cta becomes ready */
+    document.getElementById('pdp-cta').className='pdp-cta ready';
+    document.getElementById('pdp-cta').textContent='Find via Endless Aisle →';
+    moveFinger(540,1840);
+    await wait(900);
+    await tapAt(540,1840);
+    await wait(400);
+
+    /* ── ENDLESS AISLE ── */
+    showScreen('endless');hideFinger();
+    await wait(2000);
+    moveFinger(540,780);
+    await wait(900);
+    await tapAt(540,780);
+    await wait(500);
+    moveFinger(540,1830);
+    await wait(900);
+    await tapAt(540,1830);
+    await wait(400);
+
+    /* ── ORDER ── */
+    showScreen('order-screen');
+    document.getElementById('confirm-btn').classList.remove('glow');
+    hideFinger();
+    await wait(2200);
+    moveFinger(540,1860);
+    await wait(900);
+    document.getElementById('confirm-btn').classList.add('glow');
+    await tapAt(540,1860);
+    await wait(400);
+
+    /* ── CONFIRM ── */
+    showScreen('confirm-screen');
+    const ring=document.getElementById('conf-ring');
+    ring.classList.remove('show');hideFinger();
+    await wait(300);ring.classList.add('show');
+    await wait(4000);
+  }
+}
+
+runDemo();
+</script>
+</body>
+</html>
