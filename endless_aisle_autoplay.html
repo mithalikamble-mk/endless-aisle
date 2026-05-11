@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fynd Store OS – Endless Aisle Autoplay</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+/* ── reset & base ───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --gold: #C9941A;
+  --gold-l: #E8B84B;
+  --bg: #080808;
+  --card: #111111;
+  --surf: #181818;
+  --txt: #F5F0E8;
+  --muted: #666;
+  --dim: #1E1E1E;
+  --red: #C62828;
+  --serif: 'Cormorant Garamond', serif;
+  --sans: 'Outfit', sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  background: #030303;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--sans);
+  padding: 20px;
+}
+
+/* ── wrapper ────────────────────────────────────────────── */
+#wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+/* ── top bar ─────────────────────────────────────────────── */
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+#topbar-label {
+  color: var(--gold);
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+#live-dot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#live-dot span:first-child {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #4CAF50;
+  display: inline-block;
+}
+#live-dot span:last-child {
+  color: #4CAF50;
+  font-size: 11px;
+}
+
+/* ── kiosk frame ─────────────────────────────────────────── */
+#kiosk {
+  width: 380px;
+  height: 810px;
+  border-radius: 26px;
+  overflow: hidden;
+  border: 2px solid var(--dim);
+  box-shadow: 0 0 60px rgba(201,148,26,0.09), 0 40px 120px rgba(0,0,0,.73);
+  position: relative;
+  background: var(--bg);
+  user-select: none;
+}
+
+/* ── screen-name badge ───────────────────────────────────── */
+#screen-badge {
+  position: absolute;
+  top: 12px; right: 12px;
+  background: rgba(0,0,0,.8);
+  border-radius: 8px;
+  padding: 4px 10px;
+  backdrop-filter: blur(8px);
+  z-index: 50;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+/* ── screens (hidden by default) ────────────────────────── */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+}
+.screen.active { display: flex; }
+
+/* ── ghost finger ────────────────────────────────────────── */
+#ghost-finger {
+  position: fixed;
+  width: 36px; height: 36px;
+  pointer-events: none;
+  z-index: 9998;
+  transition: left .55s cubic-bezier(.4,0,.2,1),
+              top  .55s cubic-bezier(.4,0,.2,1),
+              transform .15s ease;
+  transform: scale(1);
+  display: none;
+}
+#ghost-finger.tapping { transform: scale(0.72); }
+
+/* ── ripple ──────────────────────────────────────────────── */
+.ripple {
+  position: fixed;
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%,-50%) scale(.3);
+  opacity: 1;
+  animation: rippleAnim .7s ease-out forwards;
+}
+@keyframes rippleAnim {
+  0%   { transform: translate(-50%,-50%) scale(.3); opacity: 1; }
+  100% { transform: translate(-50%,-50%) scale(2.2); opacity: 0; }
+}
+
+/* ── progress dots ───────────────────────────────────────── */
+#progress {
+  display: flex;
+  gap: 5px;
+  align-items: flex-end;
+}
+.pdot {
+  height: 7px;
+  width: 7px;
+  border-radius: 4px;
+  background: var(--dim);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: width .4s, background .4s;
+}
+.pdot.active {
+  width: 28px;
+  background: var(--gold);
+}
+.pdot-label {
+  color: var(--gold);
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-top: 3px;
+  white-space: nowrap;
+  display: none;
+}
+.pdot.active .pdot-label { display: block; }
+
+#footer-note {
+  color: #2A2A2A;
+  font-size: 10px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ATTRACT SCREEN
+══════════════════════════════════════════════════════════ */
+#attract {
+  background: var(--bg);
+  align-items: center;
+  justify-content: space-between;
+  padding: 44px 28px 40px;
+  overflow: hidden;
+}
+#attract-glow {
+  position: absolute;
+  top: 35%; left: 50%;
+  transform: translate(-50%,-50%);
+  width: 320px; height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201,148,26,.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+.att-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1;
+}
+.logo-box {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; color: var(--bg); font-size: 16px;
+}
+.logo-name {
+  color: var(--txt);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+#att-center { text-align: center; z-index: 1; }
+#att-headline {
+  color: var(--gold);
+  font-family: var(--serif);
+  font-size: 60px;
+  font-weight: 700;
+  line-height: 1.05;
+  white-space: pre-line;
+  margin-bottom: 18px;
+}
+#att-sub {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.7;
+}
+#att-dots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 22px;
+}
+.att-dot {
+  height: 8px;
+  border-radius: 4px;
+  background: #252525;
+  transition: all .4s;
+  width: 8px;
+}
+.att-dot.on { background: var(--gold); width: 28px; }
+
+#tap-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  z-index: 1;
+}
+#tap-ring {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+  background: transparent;
+  transition: all .3s;
+  animation: pulse 1.8s ease-in-out infinite;
+}
+#tap-ring.highlight {
+  border-color: #fff;
+  background: rgba(201,148,26,.2);
+  box-shadow: 0 0 20px rgba(201,148,26,.53);
+}
+.tap-label {
+  color: var(--gold);
+  font-size: 13px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: .25; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   CATALOGUE SCREEN
+══════════════════════════════════════════════════════════ */
+#catalogue { background: var(--bg); }
+.cat-header {
+  padding: 26px 22px 14px;
+  border-bottom: 1px solid #1A1A1A;
+  flex-shrink: 0;
+}
+.cat-toprow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.cat-eyebrow {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.cat-title {
+  color: var(--txt);
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 700;
+}
+.cat-logo-sm {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; color: var(--bg); font-size: 15px;
+}
+.search-bar {
+  background: var(--surf);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #222;
+  margin-bottom: 12px;
+}
+.search-ph { color: #333; font-size: 13px; }
+.cat-filters {
+  display: flex;
+  gap: 8px;
+}
+.fchip {
+  background: var(--surf);
+  color: var(--muted);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 12px;
+}
+.fchip.on { background: var(--gold); color: var(--bg); font-weight: 700; }
+
+.cat-grid {
+  flex: 1;
+  overflow: hidden;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 11px;
+  align-content: start;
+}
+.prod-card {
+  background: var(--card);
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #1A1A1A;
+  transition: border .2s, box-shadow .2s;
+}
+.prod-card.hl {
+  border: 1.5px solid var(--gold);
+  box-shadow: 0 0 14px rgba(201,148,26,.27);
+}
+.prod-img-wrap {
+  background: var(--surf);
+  height: 100px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 44px;
+  position: relative;
+}
+.prod-tag {
+  position: absolute;
+  top: 7px; right: 7px;
+  background: var(--gold);
+  color: var(--bg);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+.prod-info { padding: 10px 12px; }
+.prod-brand { color: var(--muted); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; }
+.prod-name  { color: var(--txt); font-size: 12px; font-weight: 600; margin-top: 2px; line-height: 1.3; }
+.prod-price { color: var(--gold); font-size: 14px; font-weight: 700; margin-top: 5px; }
+
+/* ══════════════════════════════════════════════════════════
+   PDP SCREEN
+══════════════════════════════════════════════════════════ */
+#pdp { background: var(--bg); }
+.pdp-hero {
+  background: var(--surf);
+  height: 40%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+.pdp-back {
+  position: absolute;
+  top: 16px; left: 16px;
+  background: #1A1A1A;
+  border-radius: 9px;
+  padding: 7px 13px;
+  color: var(--txt);
+  font-size: 12px;
+}
+.pdp-shoe { font-size: 90px; margin-bottom: 6px; }
+.pdp-color { color: var(--muted); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+.pdp-body { flex: 1; overflow: hidden; padding: 20px 22px; }
+.pdp-brand-sm { color: var(--muted); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+.pdp-name  { color: var(--txt); font-family: var(--serif); font-size: 26px; font-weight: 700; line-height: 1.1; margin-top: 3px; }
+.pdp-price-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.pdp-price { color: var(--gold); font-size: 22px; font-weight: 700; }
+.pdp-tax   { color: var(--muted); font-size: 11px; }
+.pdp-rating { color: #555; font-size: 11px; margin-top: 3px; }
+.sizes-section { margin-top: 20px; }
+.sizes-label { color: var(--muted); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+.sizes-row { display: flex; gap: 9px; flex-wrap: wrap; }
+.sz-btn {
+  width: 48px; height: 48px;
+  border-radius: 11px;
+  border: 1px solid #2E2E2E;
+  background: var(--surf);
+  color: var(--txt);
+  font-size: 15px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  transition: all .25s;
+}
+.sz-btn.oos { border-color: #1E1E1E; background: #0D0D0D; color: #272727; }
+.sz-btn.oos::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 70%; height: 1px;
+  background: #2A2A2A;
+  transform: translate(-50%,-50%) rotate(-45deg);
+}
+.sz-btn.hl {
+  border: 1.5px solid var(--gold);
+  background: rgba(201,148,26,.12);
+  color: var(--gold);
+  box-shadow: 0 0 12px rgba(201,148,26,.5);
+}
+#oos-alert {
+  margin-top: 12px;
+  background: #180000;
+  border: 1px solid rgba(198,40,40,.35);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: none;
+  animation: fadeSlide .4s ease;
+}
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.oos-title { color: var(--red); font-size: 12px; font-weight: 600; }
+.oos-sub   { color: var(--muted); font-size: 11px; margin-top: 4px; }
+#pdp-cta {
+  margin-top: 12px;
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 15px; font-weight: 700;
+  text-align: center;
+  transition: all .4s;
+}
+#pdp-cta.wait  { background: var(--surf); color: #333; }
+#pdp-cta.ready { background: var(--gold); color: var(--bg); box-shadow: 0 0 24px rgba(201,148,26,.6); }
+
+/* ══════════════════════════════════════════════════════════
+   ENDLESS AISLE SCREEN
+══════════════════════════════════════════════════════════ */
+#endless { background: var(--bg); padding: 26px 22px 20px; }
+.ea-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(201,148,26,.1);
+  border: 1px solid rgba(201,148,26,.27);
+  border-radius: 20px;
+  padding: 5px 13px;
+  margin-bottom: 16px;
+}
+.ea-badge-text { color: var(--gold); font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+.ea-title { color: var(--txt); font-family: var(--serif); font-size: 28px; font-weight: 700; line-height: 1.1; margin-bottom: 5px; }
+.ea-sub   { color: var(--muted); font-size: 13px; margin-bottom: 20px; line-height: 1.6; }
+.ea-cards { display: flex; flex-direction: column; gap: 11px; flex: 1; }
+.ea-card {
+  background: var(--card);
+  border: 1.5px solid #1E1E1E;
+  border-radius: 14px;
+  padding: 16px 18px;
+  position: relative;
+  transition: all .25s;
+}
+.ea-card.hl {
+  background: rgba(201,148,26,.06);
+  border-color: var(--gold);
+  box-shadow: 0 0 14px rgba(201,148,26,.27);
+}
+.ea-pill {
+  position: absolute;
+  top: 11px; right: 13px;
+  background: var(--surf);
+  color: var(--muted);
+  font-size: 9px; font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 7px;
+  letter-spacing: .5px;
+  transition: all .2s;
+}
+.ea-card.hl .ea-pill { background: var(--gold); color: var(--bg); }
+.ea-icon { font-size: 22px; margin-bottom: 7px; }
+.ea-name { color: var(--txt); font-size: 14px; font-weight: 600; }
+.ea-units { color: var(--muted); font-size: 11px; margin-top: 2px; }
+.ea-eta  { color: var(--gold); font-size: 12px; font-weight: 600; margin-top: 5px; }
+.ea-check {
+  position: absolute;
+  right: 18px; bottom: 16px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--gold);
+  display: none;
+  align-items: center; justify-content: center;
+  color: var(--bg); font-size: 11px; font-weight: 900;
+}
+.ea-card.hl .ea-check { display: flex; }
+#ea-cta {
+  margin-top: 16px;
+  border-radius: 12px;
+  padding: 17px;
+  font-size: 15px; font-weight: 700;
+  text-align: center;
+  transition: all .3s;
+}
+#ea-cta.off { background: var(--surf); color: #333; }
+#ea-cta.on  { background: var(--gold); color: var(--bg); box-shadow: 0 0 20px rgba(201,148,26,.6); }
+
+/* ══════════════════════════════════════════════════════════
+   ORDER SCREEN
+══════════════════════════════════════════════════════════ */
+#order { background: var(--bg); padding: 26px 22px; }
+.ord-sm    { color: var(--muted); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+.ord-title { color: var(--txt); font-family: var(--serif); font-size: 26px; font-weight: 700; margin-bottom: 22px; margin-top: 4px; }
+.ord-card  {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid #1A1A1A;
+  margin-bottom: 13px;
+}
+.ord-thumb {
+  width: 64px; height: 64px;
+  background: var(--surf);
+  border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 34px;
+  flex-shrink: 0;
+}
+.ord-brand { color: var(--muted); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; }
+.ord-name  { color: var(--txt); font-size: 14px; font-weight: 600; margin-top: 2px; line-height: 1.3; }
+.ord-meta  { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.ord-price { color: var(--gold); font-size: 16px; font-weight: 700; margin-top: 4px; }
+.ord-info  {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 14px 16px;
+  border: 1px solid #1A1A1A;
+  margin-bottom: 13px;
+}
+.ord-info-label { color: var(--muted); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 9px; }
+.ord-info-row   { display: flex; gap: 10px; align-items: flex-start; }
+.ord-info-icon  { font-size: 20px; }
+.ord-info-name  { color: var(--txt); font-size: 13px; font-weight: 600; }
+.ord-info-eta   { color: var(--gold); font-size: 12px; margin-top: 2px; }
+.ord-addr       { color: var(--txt); font-size: 13px; line-height: 1.7; }
+.ord-addr span  { color: var(--muted); }
+.ord-total-row  { display: flex; justify-content: space-between; padding: 0 3px; margin-bottom: 16px; }
+.ord-total-lbl  { color: var(--muted); font-size: 13px; }
+.ord-total-val  { color: var(--txt); font-size: 17px; font-weight: 700; }
+#confirm-btn {
+  background: var(--gold);
+  color: var(--bg);
+  border-radius: 12px;
+  padding: 18px;
+  font-size: 16px; font-weight: 800;
+  text-align: center;
+  letter-spacing: .5px;
+  transition: box-shadow .3s;
+}
+#confirm-btn.glow { box-shadow: 0 0 30px rgba(201,148,26,.8); }
+
+/* ══════════════════════════════════════════════════════════
+   CONFIRM SCREEN
+══════════════════════════════════════════════════════════ */
+#confirm {
+  background: var(--bg);
+  align-items: center;
+  justify-content: center;
+  padding: 32px 26px;
+  text-align: center;
+}
+#conf-ring {
+  width: 96px; height: 96px;
+  border-radius: 50%;
+  background: rgba(201,148,26,.1);
+  border: 2px solid var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 44px;
+  margin-bottom: 26px;
+  transform: scale(0);
+  transition: transform .55s cubic-bezier(.34,1.56,.64,1);
+}
+#conf-ring.show { transform: scale(1); }
+.conf-sm    { color: var(--muted); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 7px; }
+.conf-title { color: var(--txt); font-family: var(--serif); font-size: 36px; font-weight: 700; line-height: 1.1; margin-bottom: 14px; }
+.conf-detail { color: var(--muted); font-size: 13px; line-height: 1.8; margin-bottom: 28px; }
+.conf-detail span { color: var(--gold); font-weight: 600; }
+.conf-id-box {
+  background: var(--card);
+  border-radius: 13px;
+  padding: 13px 20px;
+  border: 1px solid #1A1A1A;
+  margin-bottom: 13px;
+  width: 100%;
+}
+.conf-id-label { color: var(--muted); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+.conf-id       { color: var(--txt); font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+.conf-notif {
+  background: rgba(201,148,26,.06);
+  border-radius: 13px;
+  padding: 13px 20px;
+  border: 1px solid rgba(201,148,26,.17);
+  margin-bottom: 28px;
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.conf-notif-icon  { font-size: 18px; }
+.conf-notif-title { color: var(--gold); font-size: 11px; font-weight: 700; }
+.conf-notif-sub   { color: var(--muted); font-size: 11px; margin-top: 2px; }
+.conf-brand { display: flex; align-items: center; gap: 9px; margin-bottom: 5px; }
+.conf-logo {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; color: var(--bg); font-size: 13px;
+}
+.conf-brand-name { color: var(--txt); font-size: 15px; font-weight: 600; }
+.conf-tag { color: var(--muted); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<!-- ghost finger -->
+<div id="ghost-finger">
+  <svg viewBox="0 0 36 36" width="36" height="36">
+    <circle cx="18" cy="18" r="14" fill="rgba(201,148,26,0.2)" stroke="#C9941A" stroke-width="1.5"/>
+    <text x="18" y="23" text-anchor="middle" font-size="16">👆</text>
+  </svg>
+</div>
+
+<div id="wrapper">
+
+  <!-- top bar -->
+  <div id="topbar">
+    <div id="topbar-label">32″ iMin · Endless Aisle Demo</div>
+    <div id="live-dot">
+      <span></span>
+      <span>Live Loop</span>
+    </div>
+  </div>
+
+  <!-- kiosk frame -->
+  <div id="kiosk">
+
+    <!-- screen name badge -->
+    <div id="screen-badge">Attract</div>
+
+    <!-- ══ ATTRACT ══ -->
+    <div id="attract" class="screen active">
+      <div id="attract-glow"></div>
+      <div class="att-logo">
+        <div class="logo-box">F</div>
+        <span class="logo-name">Fynd Store OS</span>
+      </div>
+      <div id="att-center">
+        <div id="att-headline">Walk In.
+Walk Out
+With More.</div>
+        <div id="att-sub">Browse our full catalogue — every SKU, every size.</div>
+        <div id="att-dots">
+          <div class="att-dot on" id="ad0"></div>
+          <div class="att-dot" id="ad1"></div>
+          <div class="att-dot" id="ad2"></div>
+        </div>
+      </div>
+      <div id="tap-cta">
+        <div id="tap-ring">👆</div>
+        <div class="tap-label">Tap to Explore</div>
+      </div>
+    </div>
+
+    <!-- ══ CATALOGUE ══ -->
+    <div id="catalogue" class="screen">
+      <div class="cat-header">
+        <div class="cat-toprow">
+          <div>
+            <div class="cat-eyebrow">Explore</div>
+            <div class="cat-title">Our Catalogue</div>
+          </div>
+          <div class="cat-logo-sm">F</div>
+        </div>
+        <div class="search-bar">
+          <span>🔍</span>
+          <span class="search-ph">Search products, brands…</span>
+        </div>
+        <div class="cat-filters">
+          <div class="fchip on">All</div>
+          <div class="fchip">Footwear</div>
+          <div class="fchip">Apparel</div>
+          <div class="fchip">Sports</div>
+        </div>
+      </div>
+      <div class="cat-grid" id="cat-grid">
+        <!-- filled by JS -->
+      </div>
+    </div>
+
+    <!-- ══ PDP ══ -->
+    <div id="pdp" class="screen">
+      <div class="pdp-hero">
+        <div class="pdp-back">← Back</div>
+        <div class="pdp-shoe">👟</div>
+        <div class="pdp-color">Midnight Black</div>
+      </div>
+      <div class="pdp-body">
+        <div class="pdp-brand-sm">Nike</div>
+        <div class="pdp-name">Air Max 270</div>
+        <div class="pdp-price-row">
+          <span class="pdp-price">₹12,999</span>
+          <span class="pdp-tax">Incl. taxes</span>
+        </div>
+        <div class="pdp-rating">⭐ 4.6 · 2,341 reviews</div>
+        <div class="sizes-section">
+          <div class="sizes-label">Select Size (UK)</div>
+          <div class="sizes-row" id="sizes-row">
+            <!-- filled by JS -->
+          </div>
+        </div>
+        <div id="oos-alert">
+          <div class="oos-title">⚠ Out of Stock at This Store</div>
+          <div class="oos-sub">Don't worry — we'll find it for you.</div>
+        </div>
+        <div id="pdp-cta" class="wait">Select a size to continue</div>
+      </div>
+    </div>
+
+    <!-- ══ ENDLESS AISLE ══ -->
+    <div id="endless" class="screen">
+      <div class="ea-badge"><span>✨</span><span class="ea-badge-text">Endless Aisle</span></div>
+      <div class="ea-title">We found it.</div>
+      <div class="ea-sub">Nike Air Max 270 · Size 9 is available at 3 locations</div>
+      <div class="ea-cards">
+        <div class="ea-card hl" id="ea0">
+          <div class="ea-pill">Fastest</div>
+          <div class="ea-icon">📦</div>
+          <div class="ea-name">Warehouse – Andheri</div>
+          <div class="ea-units">14 units available</div>
+          <div class="ea-eta">Delivered in 2 days</div>
+          <div class="ea-check">✓</div>
+        </div>
+        <div class="ea-card" id="ea1">
+          <div class="ea-pill">Nearby</div>
+          <div class="ea-icon">🏪</div>
+          <div class="ea-name">Kurla Store</div>
+          <div class="ea-units">3 units available</div>
+          <div class="ea-eta">Same-day pickup</div>
+          <div class="ea-check">✓</div>
+        </div>
+        <div class="ea-card" id="ea2">
+          <div class="ea-pill">Pan-India</div>
+          <div class="ea-icon">🚚</div>
+          <div class="ea-name">Ship to Home</div>
+          <div class="ea-eta">3–5 business days</div>
+          <div class="ea-check">✓</div>
+        </div>
+      </div>
+      <div id="ea-cta" class="off">Select a fulfilment option</div>
+    </div>
+
+    <!-- ══ ORDER ══ -->
+    <div id="order" class="screen">
+      <div class="ord-sm">Order Summary</div>
+      <div class="ord-title">Confirm Your Order</div>
+      <div class="ord-card">
+        <div class="ord-thumb">👟</div>
+        <div>
+          <div class="ord-brand">Nike</div>
+          <div class="ord-name">Air Max 270</div>
+          <div class="ord-meta">Size UK 9 · Midnight Black</div>
+          <div class="ord-price">₹12,999</div>
+        </div>
+      </div>
+      <div class="ord-info">
+        <div class="ord-info-label">Fulfilment</div>
+        <div class="ord-info-row">
+          <div class="ord-info-icon">📦</div>
+          <div>
+            <div class="ord-info-name">Warehouse – Andheri</div>
+            <div class="ord-info-eta">Delivered in 2 days</div>
+          </div>
+        </div>
+      </div>
+      <div class="ord-info">
+        <div class="ord-info-label">Deliver To</div>
+        <div class="ord-addr">Rahul Sharma<br><span>42, Hill View Apt, Bandra West,<br>Mumbai — 400050</span></div>
+      </div>
+      <div class="ord-total-row">
+        <span class="ord-total-lbl">Total</span>
+        <span class="ord-total-val">₹12,999</span>
+      </div>
+      <div id="confirm-btn">Confirm Order ✓</div>
+    </div>
+
+    <!-- ══ CONFIRM ══ -->
+    <div id="confirm" class="screen">
+      <div id="conf-ring">✓</div>
+      <div class="conf-sm">Order Placed</div>
+      <div class="conf-title">You're all set!</div>
+      <div class="conf-detail">Nike Air Max 270 · Size 9<br><span>Delivered in 2 days</span></div>
+      <div class="conf-id-box">
+        <div class="conf-id-label">Order ID</div>
+        <div class="conf-id">#FYS-2026-84921</div>
+      </div>
+      <div class="conf-notif">
+        <div class="conf-notif-icon">💬</div>
+        <div>
+          <div class="conf-notif-title">Confirmation sent</div>
+          <div class="conf-notif-sub">WhatsApp &amp; SMS to +91 98765 43210</div>
+        </div>
+      </div>
+      <div class="conf-brand">
+        <div class="conf-logo">F</div>
+        <div class="conf-brand-name">Fynd Store OS</div>
+      </div>
+      <div class="conf-tag">Endless Aisle</div>
+    </div>
+
+  </div><!-- /kiosk -->
+
+  <!-- progress dots -->
+  <div id="progress">
+    <div class="pdot active" data-label="Attract"><div class="pdot-label">Attract</div></div>
+    <div class="pdot" data-label="Browse"><div class="pdot-label">Browse</div></div>
+    <div class="pdot" data-label="Product"><div class="pdot-label">Product</div></div>
+    <div class="pdot" data-label="Aisle"><div class="pdot-label">Aisle</div></div>
+    <div class="pdot" data-label="Order"><div class="pdot-label">Order</div></div>
+    <div class="pdot" data-label="Done"><div class="pdot-label">Done</div></div>
+  </div>
+
+  <div id="footer-note">Runs automatically · No interaction needed</div>
+</div><!-- /wrapper -->
+
+<script>
+/* ════════════════════════════════════════════════════════
+   DATA
+════════════════════════════════════════════════════════ */
+const PRODUCTS = [
+  { brand:"Nike",        name:"Air Max 270",    price:"₹12,999", tag:"Bestseller" },
+  { brand:"Adidas",      name:"Ultraboost 22",  price:"₹14,499", tag:"New" },
+  { brand:"Puma",        name:"RS-X3",          price:"₹8,999",  tag:"Sale" },
+  { brand:"Reebok",      name:"Classic Leather",price:"₹7,499",  tag:"" },
+  { brand:"New Balance", name:"990v5",          price:"₹16,999", tag:"Premium" },
+  { brand:"Converse",    name:"Chuck 70",       price:"₹5,999",  tag:"" },
+];
+const SIZES = [6,7,8,9,10,11];
+const OOS_SIZES = [9];
+const BANNERS = [
+  { h:"Walk In.\nWalk Out\nWith More.", s:"Browse our full catalogue — every SKU, every size." },
+  { h:"Never Miss\nA Sale.",            s:"Out of stock? We'll find it across our network." },
+  { h:"Endless\nAisle.",                s:"One tap. Infinite inventory. Delivered to you." },
+];
+const SCREEN_NAMES = {
+  attract:"Attract", catalogue:"Browse", pdp:"Product Detail",
+  endless:"Endless Aisle", order:"Order", confirm:"Confirmed"
+};
+const SCREEN_DOT_IDX = { attract:0, catalogue:1, pdp:2, endless:3, order:4, confirm:5 };
+
+/* ── Playback script (mirrors the JSX SCRIPT array) ─────
+   finger x/y = % of kiosk bounding rect               */
+const SCRIPT = [
+  { screen:"attract",   state:{},                  finger:null,          wait:2800 },
+  { screen:"attract",   state:{highlight:true},     finger:{x:50,y:85},  tap:true, wait:500 },
+  { screen:"catalogue", state:{},                   finger:null,          wait:1800 },
+  { screen:"catalogue", state:{active:0},           finger:{x:27,y:62},  wait:900  },
+  { screen:"catalogue", state:{active:0},           finger:{x:27,y:62},  tap:true, wait:600 },
+  { screen:"pdp",       state:{},                   finger:null,          wait:1600 },
+  { screen:"pdp",       state:{hSize:9},            finger:{x:71,y:74},  wait:800  },
+  { screen:"pdp",       state:{hSize:9},            finger:{x:71,y:74},  tap:true, wait:400 },
+  { screen:"pdp",       state:{hSize:9,oos:true},   finger:null,          wait:1400 },
+  { screen:"pdp",       state:{hSize:9,oos:true},   finger:{x:50,y:92},  wait:800  },
+  { screen:"pdp",       state:{hSize:9,oos:true},   finger:{x:50,y:92},  tap:true, wait:500 },
+  { screen:"endless",   state:{},                   finger:null,          wait:1600 },
+  { screen:"endless",   state:{hi:0},               finger:{x:50,y:45},  wait:900  },
+  { screen:"endless",   state:{hi:0},               finger:{x:50,y:45},  tap:true, wait:400 },
+  { screen:"endless",   state:{hi:0,ready:true},    finger:{x:50,y:91},  wait:800  },
+  { screen:"endless",   state:{hi:0,ready:true},    finger:{x:50,y:91},  tap:true, wait:500 },
+  { screen:"order",     state:{},                   finger:null,          wait:1800 },
+  { screen:"order",     state:{},                   finger:{x:50,y:90},  wait:700  },
+  { screen:"order",     state:{conf:true},          finger:{x:50,y:90},  tap:true, wait:500 },
+  { screen:"confirm",   state:{},                   finger:null,          wait:3200 },
+];
+
+/* ════════════════════════════════════════════════════════
+   BUILD STATIC DOM PARTS
+════════════════════════════════════════════════════════ */
+
+// Catalogue grid
+const grid = document.getElementById('cat-grid');
+PRODUCTS.forEach((p, i) => {
+  const card = document.createElement('div');
+  card.className = 'prod-card';
+  card.id = 'pc' + i;
+  card.innerHTML = `
+    <div class="prod-img-wrap">👟${p.tag ? `<div class="prod-tag">${p.tag}</div>` : ''}</div>
+    <div class="prod-info">
+      <div class="prod-brand">${p.brand}</div>
+      <div class="prod-name">${p.name}</div>
+      <div class="prod-price">${p.price}</div>
+    </div>`;
+  grid.appendChild(card);
+});
+
+// Size buttons
+const sizesRow = document.getElementById('sizes-row');
+SIZES.forEach(s => {
+  const btn = document.createElement('div');
+  btn.className = 'sz-btn' + (OOS_SIZES.includes(s) ? ' oos' : '');
+  btn.id = 'sz' + s;
+  btn.textContent = s;
+  sizesRow.appendChild(btn);
+});
+
+/* ════════════════════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════════════════════ */
+const kiosk  = document.getElementById('kiosk');
+const finger = document.getElementById('ghost-finger');
+
+function pctToPx(xPct, yPct) {
+  const r = kiosk.getBoundingClientRect();
+  return { x: r.left + (xPct / 100) * r.width,
+           y: r.top  + (yPct / 100) * r.height };
+}
+
+function moveFinger(xPct, yPct) {
+  const { x, y } = pctToPx(xPct, yPct);
+  finger.style.left = (x - 18) + 'px';
+  finger.style.top  = (y - 18) + 'px';
+  finger.style.display = 'block';
+}
+function hideFinger() { finger.style.display = 'none'; }
+
+function doTap(xPct, yPct) {
+  return new Promise(res => {
+    const { x, y } = pctToPx(xPct, yPct);
+    setTimeout(() => {
+      finger.classList.add('tapping');
+      const r = document.createElement('div');
+      r.className = 'ripple';
+      r.style.left = x + 'px';
+      r.style.top  = y + 'px';
+      document.body.appendChild(r);
+      setTimeout(() => { r.remove(); finger.classList.remove('tapping'); res(); }, 700);
+    }, 280);
+  });
+}
+
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* ── screen switching ─────────────────────────────────── */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('screen-badge').textContent = SCREEN_NAMES[id] || id;
+  const di = SCREEN_DOT_IDX[id] ?? 0;
+  document.querySelectorAll('.pdot').forEach((d, i) => d.classList.toggle('active', i === di));
+}
+
+/* ── apply state to screens ───────────────────────────── */
+function applyState(screen, st) {
+  if (screen === 'attract') {
+    document.getElementById('tap-ring').classList.toggle('highlight', !!st.highlight);
+  }
+
+  if (screen === 'catalogue') {
+    document.querySelectorAll('.prod-card').forEach((c, i) =>
+      c.classList.toggle('hl', i === st.active));
+  }
+
+  if (screen === 'pdp') {
+    // sizes
+    SIZES.forEach(s => {
+      const el = document.getElementById('sz' + s);
+      if (!el) return;
+      const isOOS = OOS_SIZES.includes(s);
+      const isHL  = st.hSize === s;
+      el.className = 'sz-btn' + (isOOS ? ' oos' : '') + (isHL ? ' hl' : '');
+    });
+    // oos alert
+    const alert = document.getElementById('oos-alert');
+    alert.style.display = st.oos ? 'block' : 'none';
+    // cta
+    const cta = document.getElementById('pdp-cta');
+    if (st.oos) {
+      cta.className = 'ready';
+      cta.textContent = 'Find via Endless Aisle →';
+    } else {
+      cta.className = 'wait';
+      cta.textContent = 'Select a size to continue';
+    }
+  }
+
+  if (screen === 'endless') {
+    // cards
+    ['ea0','ea1','ea2'].forEach((id, i) => {
+      document.getElementById(id).classList.toggle('hl', st.hi === i);
+    });
+    // cta
+    const cta = document.getElementById('ea-cta');
+    if (st.ready) {
+      cta.className = 'on';
+      cta.textContent = 'Proceed to Order →';
+    } else {
+      cta.className = 'off';
+      cta.textContent = 'Select a fulfilment option';
+    }
+  }
+
+  if (screen === 'order') {
+    document.getElementById('confirm-btn').classList.toggle('glow', !!st.conf);
+  }
+
+  if (screen === 'confirm') {
+    const ring = document.getElementById('conf-ring');
+    ring.classList.remove('show');
+    setTimeout(() => ring.classList.add('show'), 150);
+  }
+}
+
+/* ════════════════════════════════════════════════════════
+   BANNER ROTATION (attract screen)
+════════════════════════════════════════════════════════ */
+let bannerIdx = 0;
+let bannerTimer = null;
+
+function rotateBanner() {
+  bannerIdx = (bannerIdx + 1) % BANNERS.length;
+  const b = BANNERS[bannerIdx];
+  document.getElementById('att-headline').textContent = b.h;
+  document.getElementById('att-sub').textContent = b.s;
+  [0,1,2].forEach(i => {
+    const d = document.getElementById('ad' + i);
+    d.className = 'att-dot' + (i === bannerIdx ? ' on' : '');
+  });
+}
+
+function startBannerRotation() { bannerTimer = setInterval(rotateBanner, 2800); }
+function stopBannerRotation()  { clearInterval(bannerTimer); }
+
+/* ════════════════════════════════════════════════════════
+   MAIN LOOP
+════════════════════════════════════════════════════════ */
+let stepIdx = 0;
+let loopRunning = true;
+
+async function runLoop() {
+  startBannerRotation();
+  while (loopRunning) {
+    const s = SCRIPT[stepIdx];
+
+    // show / update screen
+    showScreen(s.screen);
+    applyState(s.screen, s.state || {});
+
+    // manage banner timer
+    if (s.screen === 'attract') {
+      if (!bannerTimer) startBannerRotation();
+    } else {
+      stopBannerRotation();
+      bannerTimer = null;
+    }
+
+    // finger
+    if (s.finger) {
+      moveFinger(s.finger.x, s.finger.y);
+    } else {
+      hideFinger();
+    }
+
+    // tap
+    if (s.tap && s.finger) {
+      await doTap(s.finger.x, s.finger.y);
+    }
+
+    // wait
+    await wait(s.wait || 1000);
+
+    // advance
+    stepIdx = (stepIdx + 1) % SCRIPT.length;
+  }
+}
+
+runLoop();
+</script>
+</body>
+</html>
